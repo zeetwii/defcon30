@@ -31,13 +31,16 @@ class SerialTester:
 
                 time.sleep(0.1)
 
-                data = self.pay1.readline()
-                if len(data.decode()) > 0:
-                    #print(f"In payload interface: {data.decode()}")
-                    return data.decode()
-                else:
-                    self.pay1Stat = "Disabled"
-                    return "ERROR TIMEOUT"
+                data = self.pay1.read(32)
+
+                while len(data.decode()) < 1:
+                    self.pay1.write(packedData)
+                    self.pay1.flush()
+                    time.sleep(0.1)
+                    
+                    data = self.pay1.read(32)
+                    time.sleep(0.1)
+                return data.decode()
            # elif payNum == 2:
            #     self.pay2.write(packedData)
            #     self.pay2.flush()
@@ -82,3 +85,6 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("\nExiting...")
             break
+        except UnicodeDecodeError:
+            print("\nInvalid decode")
+            continue
