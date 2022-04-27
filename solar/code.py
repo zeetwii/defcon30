@@ -1,5 +1,6 @@
 """
 DEFCON 30 Hack The Microgrid Solar Array
+​
 This code is intended to be run on the Solar Array portion of the workshop
 """
 
@@ -17,8 +18,8 @@ from adafruit_crickit import crickit  # needed to talk to crickit
 ss = crickit.seesaw
 
 # Setup LEDs
-pixels = neopixel.NeoPixel(board.NEOPIXEL, 10, brightness=0.1)
-houses = neopixel.NeoPixel(board.A1, 6, brightness=0.1)  # have six houses
+pixels = neopixel.NeoPixel(board.NEOPIXEL, 10, brightness=1)
+houses = neopixel.NeoPixel(board.A1, 6, brightness=1)  # have six houses
 
 # set up serial
 uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=0.1)
@@ -41,17 +42,18 @@ def initial_setup():
     pixels.show()
     houses.show()
 
+
 def process_serial_input():
 
     if uart.in_waiting >= 6:
         try:
             data = uart.read()
 
-            cmd_msg = (struct.unpack('3s', data[:3])[0])
-            cmd = ''.join([chr(b) for b in cmd_msg])
+            cmd_msg = struct.unpack("3s", data[:3])[0]
+            cmd = "".join([chr(b) for b in cmd_msg])
 
-            #print(len(data))
-            #print(cmd)
+            # print(len(data))
+            # print(cmd)
 
             if len(data) == 3:
                 # return a payload of None
@@ -77,7 +79,7 @@ def serial_loop():
         payload = data[1]
 
         if cmd == "led":
-            #print("process led cmd")
+            # print("process led cmd")
             pixels[payload[0]] = (payload[1], payload[2], payload[3])
             uart.write("LED \n".encode())
         elif cmd == "top":
@@ -99,20 +101,20 @@ def serial_loop():
             uart.write("CIR \n".encode())
         elif cmd == "all":
             pixels.fill([payload[0], payload[1], payload[2]])
-            houses.fill([payload[0], payload[1], payload[2]])
+            houses.fill([payload[1], payload[0], payload[2]])
             uart.write("ALL \n".encode())
         elif cmd == "hse":
-            houses[payload[0]] = (payload[1], payload[2], payload[3])
+            houses[payload[0]] = (payload[2], payload[1], payload[3])
             uart.write("HSE \n".encode())
         elif cmd == "wnd":
-            houses[0] = (payload[1], payload[2], payload[3])
-            houses[1] = (payload[1], payload[2], payload[3])
-            houses[2] = (payload[1], payload[2], payload[3])
+            houses[0] = (payload[2], payload[1], payload[3])
+            houses[1] = (payload[2], payload[1], payload[3])
+            houses[2] = (payload[2], payload[1], payload[3])
             uart.write("WND \n".encode())
         elif cmd == "sol":
-            houses[3] = (payload[1], payload[2], payload[3])
-            houses[4] = (payload[1], payload[2], payload[3])
-            houses[5] = (payload[1], payload[2], payload[3])
+            houses[3] = (payload[2], payload[1], payload[3])
+            houses[4] = (payload[2], payload[1], payload[3])
+            houses[5] = (payload[2], payload[1], payload[3])
             uart.write("SOL \n".encode())
         elif cmd == "srv":
             crickit.servo_1.angle = payload[0]
@@ -125,6 +127,7 @@ def serial_loop():
             uart.write("RST \n".encode())
         else:
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
+
 
 # Main method that launches everthing
 def main():

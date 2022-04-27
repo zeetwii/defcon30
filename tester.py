@@ -56,7 +56,7 @@ class SerialTester:
 if __name__ == "__main__":
 
     print("Running Serial tester")
-    tester = SerialTester("COM4", "None")
+    tester = SerialTester("COM13", "None")
 
     print("Message format: [target] [command] [payload]")
 
