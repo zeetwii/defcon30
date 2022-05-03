@@ -34,7 +34,7 @@ def initial_setup():
     print("initial setup")
 
     # initialize the servo angles
-    crickit.servo_1.angle = 90
+    crickit.continuous_servo_1.throttle = -0
     crickit.servo_2.angle = 90
     crickit.servo_3.angle = 90
     crickit.servo_4.angle = 90
@@ -126,7 +126,8 @@ def serial_loop():
             crickit.stepper_motor.release()
         elif cmd == "spn":
             uart.write(f"SPN {str(payload[0])}\n".encode())
-            #TODO: Write code to spin prop
+
+            crickit.continuous_servo_1.throttle = float(payload[0]) / 100
         elif cmd == "rst":
             initial_setup()
             uart.write("RST \n".encode())
