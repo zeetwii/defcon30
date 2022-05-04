@@ -41,17 +41,22 @@ class SerialTester:
                     data = self.pay1.read(32)
                     time.sleep(0.1)
                 return data.decode()
-           # elif payNum == 2:
-           #     self.pay2.write(packedData)
-           #     self.pay2.flush()
+            elif payNum == 2:
+                self.pay2.write(packedData)
+                self.pay2.flush()
 
-           #     data = self.pay2.readline()
-           #     if len(data.decode()) > 0:
-                    #print(f"In payload interface: {data.decode()}")
-           #         return data.decode()
-           #     else:
-           #         self.pay2Stat = "Disabled"
-           #         return "ERROR TIMEOUT"
+                time.sleep(0.1)
+
+                data = self.pay2.read(32)
+
+                while len(data.decode()) < 1:
+                    self.pay2.write(packedData)
+                    self.pay2.flush()
+                    time.sleep(0.1)
+                    
+                    data = self.pay2.read(32)
+                    time.sleep(0.1)
+                return data.decode()
         except IOError:
             return "ERROR TIMEOUT"
 
@@ -59,7 +64,7 @@ class SerialTester:
 if __name__ == "__main__":
 
     print("Running Serial tester")
-    tester = SerialTester("COM13", "None")
+    tester = SerialTester("COM13", "COM17")
 
     print("Message format: [target] [command] [payload]")
 

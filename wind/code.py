@@ -34,7 +34,7 @@ def initial_setup():
     print("initial setup")
 
     # initialize the servo angles
-    crickit.continuous_servo_1.throttle = -0
+    crickit.continuous_servo_1.throttle = 0.02
     crickit.servo_2.angle = 90
     crickit.servo_3.angle = 90
     crickit.servo_4.angle = 90
@@ -113,20 +113,36 @@ def serial_loop():
             uart.write("ALL \n".encode())
         elif cmd == "smk":
             uart.write(f"SMK {str(payload[0])}\n".encode())
+            crickit.continuous_servo_1.throttle = 0
             time.sleep(0.1)
             ss.digital_write(smoker, True)
             crickit.drive_1.fraction = 1.0
             time.sleep(int(payload[0]))
             ss.digital_write(smoker, False)
             crickit.drive_1.fraction = 0.0
+            crickit.continuous_servo_1.throttle = .05
         elif cmd == "yaw":
-            uart.write(f"YAW {str(payload[0])}\n".encode())
-            for i in range(int(payload[0])):
-                crickit.stepper_motor.onestep(direction=stepper.FORWARD, style=stepper.DOUBLE)
+
+
+            count = 0
+            for i in range(1, len(payload)):
+                print(str(payload[i]))
+                count = count + payload[i]
+
+            #print(f"count: {str(count)}")
+
+            uart.write(f"YAW {str(count)}\n".encode())
+
+
+            if payload[0] == 1:
+                for i in range(int(count)):
+                    crickit.stepper_motor.onestep(direction=stepper.FORWARD, style=stepper.DOUBLE)
+            else:
+                for i in range(int(count)):
+                    crickit.stepper_motor.onestep(direction=stepper.BACKWARD, style=stepper.DOUBLE)
             crickit.stepper_motor.release()
         elif cmd == "spn":
             uart.write(f"SPN {str(payload[0])}\n".encode())
-
             crickit.continuous_servo_1.throttle = float(payload[0]) / 100
         elif cmd == "rst":
             initial_setup()

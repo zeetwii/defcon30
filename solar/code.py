@@ -107,14 +107,14 @@ def serial_loop():
             houses[payload[0]] = (payload[2], payload[1], payload[3])
             uart.write("HSE \n".encode())
         elif cmd == "wnd":
-            houses[0] = (payload[2], payload[1], payload[3])
-            houses[1] = (payload[2], payload[1], payload[3])
-            houses[2] = (payload[2], payload[1], payload[3])
+            houses[0] = (payload[1], payload[0], payload[2])
+            houses[1] = (payload[1], payload[0], payload[2])
+            houses[2] = (payload[1], payload[0], payload[2])
             uart.write("WND \n".encode())
         elif cmd == "sol":
-            houses[3] = (payload[2], payload[1], payload[3])
-            houses[4] = (payload[2], payload[1], payload[3])
-            houses[5] = (payload[2], payload[1], payload[3])
+            houses[3] = (payload[1], payload[0], payload[2])
+            houses[4] = (payload[1], payload[0], payload[2])
+            houses[5] = (payload[1], payload[0], payload[2])
             uart.write("SOL \n".encode())
         elif cmd == "srv":
             crickit.servo_1.angle = payload[0]
@@ -123,8 +123,8 @@ def serial_loop():
             crickit.servo_4.angle = payload[3]
             uart.write("SRV \n".encode())
         elif cmd == "rst":
-            initial_setup()
             uart.write("RST \n".encode())
+            initial_setup()
         else:
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
 
