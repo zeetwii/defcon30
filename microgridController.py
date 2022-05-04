@@ -5,6 +5,7 @@ import random       # used for random
 import serial       # needed for serial
 import random       # needed for random
 import binascii     # needed for hex decoding
+import math         # needed for floor
 
 class MicrogridController:
 
@@ -20,6 +21,30 @@ class MicrogridController:
         self.yaw = 0
         self.easterEgg = False
 
+    def stepPayload(self, direction, rotationAngle):
+        """
+        Rotates the payload in the direction of the wind
+        """
+
+        stepAngle = 0.36 #1.8 * 14 / 70
+
+        totalSteps = int(rotationAngle / stepAngle)
+
+        #print(f"totalSteps: {totalSteps}")
+
+        payload = []
+        payload.append(str(direction))
+        payload.append(str(0))
+        payload.append(str(0))
+
+        for i in range(math.floor(totalSteps / 255)):
+            payload.append(str(255))
+
+        payload.append(str(totalSteps % 255))
+
+        #print(f"payload: {payload}")
+
+        return payload
 
 
     def updateGrid(self, data):
@@ -97,8 +122,14 @@ class MicrogridController:
                 self.payloadInterface("wind", "all", [str(0), str(255), str(0)])
             
             # Wind direction
-            if self.yaw > data["wind_direction_inject"]:
+            if self.yaw > data["wind_direction_inject"]: # counterclockwise
                 rotationAngle = self.yaw - data["wind_direction_inject"]
+                direction = 1
+            else: # clockwise
+                rotationAngle = data["wind_direction_inject"] - self.yaw
+                direction = 0
+            payload = self.stepPayload(direction, rotationAngle)
+            self.payloadInterface("wind", "yaw", payload)
             
 
     def payloadInterface(self, type, cmd, payloadArray):
