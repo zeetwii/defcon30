@@ -21,6 +21,11 @@ class SerialTester:
         '''Handels sending commands to the payload over serial and returns the response'''
 
         fmt = "3s" + "B"*len(payloadArray)
+
+        print(fmt)
+        print(cmd)
+        print(payloadArray)
+
         packedData = struct.pack(fmt, cmd.encode(), *payloadArray)
 
         #print(fmt)
