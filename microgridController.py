@@ -9,13 +9,13 @@ import math         # needed for floor
 
 class MicrogridController:
 
-    def __init__(self, wind): 
+    def __init__(self, wind, solar): 
         """
         solar: the solar panel serial port
         wind: the wind turbine serial port
         """
 
-        #self.solar = serial.Serial(solar, 115200, timeout=0.1)
+        self.solar = serial.Serial(solar, 115200, timeout=0.1)
         self.wind = serial.Serial(wind, 115200, timeout=0.1)
 
         self.yaw = 0
@@ -71,11 +71,11 @@ class MicrogridController:
             windWarning += 1
 
         if (data["wind_direction_actual"]-data["wind_direction_inject"]) >= 90 or (data["wind_direction_actual"]-data["wind_direction_inject"]) <= -90:
-            windAlert += 10
-        elif (data["wind_direction_actual"]-data["wind_direction_inject"]) >= 60 or (data["wind_direction_actual"]-data["wind_direction_inject"]) <= -60:
             windAlert += 1
-        elif (data["wind_direction_actual"]-data["wind_direction_inject"]) >= 30 or (data["wind_direction_actual"]-data["wind_direction_inject"]) <= -30:
+        elif (data["wind_direction_actual"]-data["wind_direction_inject"]) >= 60 or (data["wind_direction_actual"]-data["wind_direction_inject"]) <= -60:
             windWarning += 1
+        elif (data["wind_direction_actual"]-data["wind_direction_inject"]) >= 30 or (data["wind_direction_actual"]-data["wind_direction_inject"]) <= -30:
+            windWarning += 0
 
         if (abs(data["temp_low_inject"]) - abs(data["temp_low_actual"])) >= 50:
             solarAlert += 1
@@ -108,15 +108,17 @@ class MicrogridController:
 
         if self.easterEgg:
             self.easterEgg = False
-            #self.payloadInterface("solar", "hse", ["0", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "hse", ["1", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "hse", ["2", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "hse", ["3", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "hse", ["4", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "hse", ["5", str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "cir", [str(random.randint(0, 255)), str(random.randint(0, 255)), str(random.randint(0, 255))])
-            #self.payloadInterface("solar", "srv", [str(random.randint(0, 180)), str(random.randint(0, 180)), str(random.randint(0, 180)), str(random.randint(0, 180))])
-            self.payloadInterface("wind", "all", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [0, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [1, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [2, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [3, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [4, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "hse", [5, random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "top", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("solar", "btm", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("wind", "top", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            self.payloadInterface("wind", "btm", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+            #self.payloadInterface("wind", "all", [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
             self.payloadInterface("wind", "spn", [random.randint(0, 99)])
 
             #TODO: Finish
@@ -125,21 +127,51 @@ class MicrogridController:
             if data["wind_speed_inject"] >= data["wind_speed_inject"] + 50:
                 self.payloadInterface("wind", "spn", [0])
             else:
-                self.payloadInterface("wind", "spn", [math.ceil((float(data["wind_speed_inject"]) / 200) * 100)])
+                try:
+                    self.payloadInterface("wind", "spn", [math.ceil((float(data["wind_speed_inject"]) / 200) * 100)])
+                except:
+                    self.payloadInterface("wind", "spn", [5])
 
             # Wind warnings
             if windAlert >= 2:
-                #self.payloadInterface("solar", "wnd", ["0", "0", "0"])
+                self.payloadInterface("solar", "wnd", [0, 0, 0])
                 self.payloadInterface("wind", "smk", [10])
             elif windWarning >= 2 or windAlert >= 1:
                 #self.payloadInterface("solar", "wnd", ["255", "0", "0"])
                 self.payloadInterface("wind", "all", [255, 0, 0])
+                self.payloadInterface("solar", "wnd", [255, 0, 0])
             elif windWarning >= 1:
                 #self.payloadInterface("solar", "wnd", ["255", "255", "0"])
                 self.payloadInterface("wind", "all", [255, 255, 0])
+                self.payloadInterface("solar", "wnd", [255, 255, 0])
             else:
                 #self.payloadInterface("solar", "wnd", ["0", "255", "0"])
                 self.payloadInterface("wind", "all", [0, 255, 0])
+                self.payloadInterface("solar", "wnd", [0, 255, 0])
+
+            # Solar warnings
+            if solarAlert >= 2:
+                self.payloadInterface("solar", "sol", [0, 0, 0])
+                self.payloadInterface("solar", "cir", [255, 0, 0])
+                self.payloadInterface("solar", "srv", [120, 120, 120, 120])
+            elif solarWarning >= 2 or windAlert >= 1:
+                #self.payloadInterface("solar", "wnd", ["255", "0", "0"])
+                self.payloadInterface("solar", "sol", [255, 0, 0])
+                self.payloadInterface("solar", "cir", [255, 0, 0])
+                self.payloadInterface("solar", "srv", [120, 120, 120, 120])
+                #self.payloadInterface("wind", "all", [255, 0, 0])
+            elif solarWarning >= 1:
+                self.payloadInterface("solar", "sol", [255, 255, 0])
+                self.payloadInterface("solar", "cir", [255, 255, 0])
+                self.payloadInterface("solar", "srv", [90, 90, 90, 90])
+                #self.payloadInterface("solar", "wnd", ["255", "255", "0"])
+                #self.payloadInterface("wind", "all", [255, 255, 0])
+            else:
+                self.payloadInterface("solar", "sol", [0, 255, 0])
+                self.payloadInterface("solar", "cir", [0, 255, 0])
+                self.payloadInterface("solar", "srv", [60, 60, 60, 60])
+                #self.payloadInterface("solar", "wnd", ["0", "255", "0"])
+                #self.payloadInterface("wind", "all", [0, 255, 0])
             
             # Wind direction
             if self.yaw > data["wind_direction_inject"]: # counterclockwise
@@ -149,6 +181,7 @@ class MicrogridController:
                 rotationAngle = data["wind_direction_inject"] - self.yaw
                 direction = 0
             payload = self.stepPayload(direction, rotationAngle)
+            print(str(payload))
             self.payloadInterface("wind", "yaw", payload)
             self.yaw = data["wind_direction_inject"]
             
@@ -158,9 +191,9 @@ class MicrogridController:
 
         fmt = "3s" + "B"*len(payloadArray)
 
-        print(fmt)
-        print(cmd)
-        print(payloadArray)
+        #print(fmt)
+        #print(cmd)
+        #print(payloadArray)
 
         packedData = struct.pack(fmt, cmd.encode(), *payloadArray)
 
