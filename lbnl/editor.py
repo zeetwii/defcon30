@@ -1,4 +1,3 @@
-from secrets import choice
 import netCDF4 # needed to read and edit netCDF4 files
 import shutil # needed to make a copy of the file
 import glob # needed to search current directory
