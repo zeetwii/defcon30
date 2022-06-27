@@ -15,6 +15,28 @@ class Editor:
 
         self.dset = netCDF4.Dataset(ncFile, 'r+')
 
+    def listField(self, key, loc):
+        """
+        Returns a list of values for the given key
+
+        Args:
+            key (str): The key representing the HRRR field to look at
+            loc (int / str): 'a' for all of them, or a int for a specific value in the array
+
+        Returns:
+            str : The values in the key as a string, using new line delimiters
+        """
+        
+        tempString = ''
+
+        if loc == 'a':
+            for x in self.dset[str(key)]:
+                tempString = tempString + str(x) + '\n'
+        else:
+            tempString = tempString + str(self.dset[str(key)][int(loc)])
+        
+        return tempString
+
     def editInteractive(self):
         
         print("\nList of editable variables:")
@@ -23,9 +45,12 @@ class Editor:
             print(f"{i} : {str(var[i])}")
         
         choice = input("Enter the field number to edit:")
+
+        print(str(self.listField(str(var[int(choice)]), 'a')))
+
         value = input('Enter the value to set to: ')
 
-        self.dset[str(var[int(choice)])][:] = float(value)
+        #self.dset[str(var[int(choice)])][:] = float(value)
 
         #self.dset['Total_cloud_cover_entire_atmosphere'][:] = 100
         #self.dset['Total_cloud_cover_entire_atmosphere'][:][self.dset['Total_cloud_cover_entire_atmosphere'][:]  <= 1000] = 150
