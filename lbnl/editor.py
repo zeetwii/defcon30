@@ -1,3 +1,4 @@
+import collections # needed for comparisons
 import netCDF4 # needed to read and edit netCDF4 files
 import shutil # needed to make a copy of the file
 import glob # needed to search current directory
@@ -15,6 +16,59 @@ class Editor:
 
         self.dset = netCDF4.Dataset(ncFile, 'r+')
 
+    def editStatusField(self, key, selection, value):
+
+        if str(selection).isdigit(): # edit a specific value
+            self.dset[str(key)][int(selection)] = float(value)
+        else: # edit all of them
+            self.dset[str(key)][:] = float(value)
+
+
+    def editWeatherField(self, key, val, time='a', x='a', y='a'):
+        """
+        Edits the HRRR weather field given by the key variable.  
+        Allows the user to change a specific x-y coordinate and time or 
+        all possible values when the user places an 'a' in the field
+
+        Args:
+            key (str): the key for the HRRR field to edit
+            val (str): The new value of the field
+            time (str / int, optional): The forecast hour to edit, or use 'a' to edit all of them. Defaults to 'a'.
+            x (str / int, optional): the row to edit, or 'a' for all of them. Defaults to 'a'.
+            y (str / int, optional): the column to edit, or 'a' for all of them. Defaults to 'a'.
+        """
+
+        if str(time).isdigit(): # targeting a specific time
+            if str(x).isdigit(): # targeting a specific x
+                if str(y).isdigit(): # targeting a specific y
+                    #print(str(self.dset[str(key)][int(time), int(x), int(y)]))
+                    self.dset[str(key)][int(time), int(x), int(y)] = float(val)
+                else: # target all y
+                    #print(str(self.dset[str(key)][int(time), int(x), :]))
+                    self.dset[str(key)][int(time), int(x), :] = float(val)
+            else: # target all x
+                if str(y).isdigit(): # targeting a specific y
+                    #print(str(self.dset[str(key)][int(time), :, int(y)]))
+                    self.dset[str(key)][int(time), :, int(y)] = float(val)
+                else: # target all y
+                    #print(str(self.dset[str(key)][int(time), :, :]))
+                    self.dset[str(key)][int(time), :, :] = float(val)
+        else: # target all time
+            if str(x).isdigit(): # targeting a specific x
+                if str(y).isdigit(): # targeting a specific y
+                    #print(str(self.dset[str(key)][:, int(x), int(y)]))
+                    self.dset[str(key)][:, int(x), int(y)] = float(val)
+                else: # target all y
+                    #print(str(self.dset[str(key)][:, int(x), :]))
+                    self.dset[str(key)][:, int(x), :] = float(val)
+            else: # target all x
+                if str(y).isdigit(): # targeting a specific y
+                    #print(str(self.dset[str(key)][:, :, int(y)]))
+                    self.dset[str(key)][:, :, int(y)] = float(val)
+                else: # target all y
+                    #print(str(self.dset[str(key)][:, :, :]))
+                    self.dset[str(key)][:, :, :] = float(val)
+
     def listField(self, key, loc):
         """
         Returns a list of values for the given key
@@ -29,11 +83,14 @@ class Editor:
         
         tempString = ''
 
-        if loc == 'a':
-            for x in self.dset[str(key)]:
-                tempString = tempString + str(x) + '\n'
-        else:
-            tempString = tempString + str(self.dset[str(key)][int(loc)])
+        try:
+            if loc == 'a':
+                for x in self.dset[str(key)]:
+                    tempString = tempString + str(x) + '\n'
+            else:
+                tempString = tempString + str(self.dset[str(key)][int(loc)]) + '\n'
+        except:
+            tempString = "Error, Key or position not found"
         
         return tempString
 
@@ -44,17 +101,37 @@ class Editor:
         for i in range(len(var)):
             print(f"{i} : {str(var[i])}")
         
-        choice = input("Enter the field number to edit:")
+        try:
+            choice = input("Enter the field number to edit: ")
 
-        print(str(self.listField(str(var[int(choice)]), 'a')))
+            print(f"\n\n{str(var[int(choice)])}")
 
-        value = input('Enter the value to set to: ')
+            print(str(self.listField(str(var[int(choice)]), 'a')))
 
-        #self.dset[str(var[int(choice)])][:] = float(value)
+            print(f"\n\n{str(self.dset[str(var[int(choice)])][0])}")
+            if hasattr(self.dset[str(var[int(choice)])][0], "__len__"): # editing a conventional weather field
 
-        #self.dset['Total_cloud_cover_entire_atmosphere'][:] = 100
-        #self.dset['Total_cloud_cover_entire_atmosphere'][:][self.dset['Total_cloud_cover_entire_atmosphere'][:]  <= 1000] = 150
-        #self.dset.close()
+                time = input(f"Enter a time from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, or 'a' to do all: ")
+                print(str(self.listField(str(var[int(choice)]), time)))
+
+                row = len(self.dset[str(var[int(choice)])][0]) - 1
+                col = len(self.dset[str(var[int(choice)])][0][0]) - 1
+
+                xVal = input(f"Enter the row number from 0 to {str(row)} to edit or 'a' for all: ")
+                yVal = input(f"Enter the column from 0 to {str(col)} to edit or 'a' for all: ")
+                value = input('Enter the new value of the field: ')
+                self.editWeatherField(str(var[int(choice)]), value, time, xVal, yVal)
+            
+            else: # editing one of the one dimensional fields
+                selction = input(f"Enter the selection from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, or 'a' to do all: ")
+                value = input('Enter the new value of the field: ')
+                self.editStatusField(str(var[int(choice)]), selction, value)
+
+
+        except IndexError:
+            print("Error, index not found")
+        except ValueError:
+            print("Error, incorrect value entered")
 
 if __name__ == "__main__":
     files = glob.glob('./*.nc')
@@ -92,6 +169,7 @@ if __name__ == "__main__":
                     editor.editInteractive()
                 except KeyboardInterrupt:
                     print("\nExiting")
+                    editor.dset.close()
                     sys.exit(0)
 
     else:
