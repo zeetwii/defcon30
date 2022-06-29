@@ -1,8 +1,9 @@
-import collections # needed for comparisons
+import numpy as np # needed for array shape
 import netCDF4 # needed to read and edit netCDF4 files
 import shutil # needed to make a copy of the file
 import glob # needed to search current directory
 import sys # needed to exit
+
 
 class Editor:
 
@@ -108,8 +109,7 @@ class Editor:
 
             print(str(self.listField(str(var[int(choice)]), 'a')))
 
-            print(f"\n\n{str(self.dset[str(var[int(choice)])][0])}")
-            if hasattr(self.dset[str(var[int(choice)])][0], "__len__"): # editing a conventional weather field
+            if len(np.shape(self.dset[str(var[int(choice)])])) == 3: # editing a conventional weather field
 
                 time = input(f"Enter a time from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, or 'a' to do all: ")
                 print(str(self.listField(str(var[int(choice)]), time)))
