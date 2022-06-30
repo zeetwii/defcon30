@@ -17,6 +17,8 @@ class Editor:
 
         self.dset = netCDF4.Dataset(ncFile, 'r+')
 
+        #print(str(self.dset))
+
     def editStatusField(self, key, selection, value):
         """
         Function to edit the status field within an HRRR file
@@ -115,6 +117,7 @@ class Editor:
             print(f"{i} : {str(var[i])}")
         
         try:
+
             choice = input("Enter the field number to edit: ")
 
             print(f"\n\n{str(var[int(choice)])}")
