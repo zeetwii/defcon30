@@ -18,6 +18,14 @@ class Editor:
         self.dset = netCDF4.Dataset(ncFile, 'r+')
 
     def editStatusField(self, key, selection, value):
+        """
+        Function to edit the status field within an HRRR file
+
+        Args:
+            key (str): the field key to edit
+            selection (str / int): the data point to edit
+            value (float): the new value to use
+        """
 
         if str(selection).isdigit(): # edit a specific value
             self.dset[str(key)][int(selection)] = float(value)
@@ -33,7 +41,7 @@ class Editor:
 
         Args:
             key (str): the key for the HRRR field to edit
-            val (str): The new value of the field
+            val (float): The new value of the field
             time (str / int, optional): The forecast hour to edit, or use 'a' to edit all of them. Defaults to 'a'.
             x (str / int, optional): the row to edit, or 'a' for all of them. Defaults to 'a'.
             y (str / int, optional): the column to edit, or 'a' for all of them. Defaults to 'a'.
@@ -96,6 +104,10 @@ class Editor:
         return tempString
 
     def editInteractive(self):
+        """
+        Interactive function that prompts the user for fields and values to edit.  
+        This acts as an entry point for the other functions when the user is local.  
+        """
         
         print("\nList of editable variables:")
         var = list(self.dset.variables.keys())
