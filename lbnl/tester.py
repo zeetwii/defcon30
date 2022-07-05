@@ -1,11 +1,10 @@
-import json
 import glob # needed for file view
 import netCDF4 # needed for weather files
 import sys # needed to exit
 import pandas as pd
 from pvlib.location import Location
 import math
-import yaml
+
 
 class MicrogridTester:
 
@@ -59,8 +58,16 @@ class MicrogridTester:
 
         return (r_o * (1 - (.75 * (cloud_coverage ** 3.4))))
 
+    def testFiles(self):
 
+        testLen = 0 # default
 
+        if len(self.actual['time']) < len(self.inject['time']): # check which has a shorter run time
+            testLen = len(self.actual['time'])
+        else:
+            testLen = len(self.inject['time'])
+
+        print(f"Running {str(testLen)} tests using the provided files")
 
 
 if __name__ == "__main__":
@@ -89,4 +96,5 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
             tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]))
+            tester.testFiles()
 
