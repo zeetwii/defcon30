@@ -48,6 +48,8 @@ def initial_setup():
     crickit.drive_1.frequency = 1000
     crickit.drive_1.fraction = 0.0  # all the way off
 
+    count = 0
+
 # process serial comms
 def process_serial_input():
 
@@ -126,7 +128,7 @@ def serial_loop():
 
             count = 0
             for i in range(1, len(payload)):
-                print(str(payload[i]))
+                #print(str(payload[i]))
                 count = count + payload[i]
 
             #print(f"count: {str(count)}")
