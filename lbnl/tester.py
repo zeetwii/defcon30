@@ -40,6 +40,9 @@ class MicrogridTester:
         print(f"Actual Lat Lon: {str(self.actLat)} {str(self.actLon)}")
         print(f"Inject Lat Lon: {str(self.injLat)} {str(self.injLon)}")
 
+        tempData = self.get_solar_positions(37.8933, -122.2974, 100, 'US/Pacific', '2022-06-15 00:00:00', '2022-06-16 00:00:00', 'LBNL')
+        print(str(tempData))
+
     def cloud_cover_to_ghi_linear(cloud_cover, ghi_clear, offset=35,
                               **kwargs):
         """
@@ -72,9 +75,7 @@ class MicrogridTester:
         ghi = (offset + (1 - offset) * (1 - cloud_cover)) * ghi_clear
         return ghi
 
-    def cloud_cover_to_irradiance_clearsky_scaling(self, cloud_cover,
-                                               method='linear',
-                                               **kwargs):
+    def cloud_cover_to_irradiance_clearsky_scaling(self, cloud_cover, method='linear', **kwargs):
         """
         Estimates irradiance from cloud cover in the following steps:
         1. Determine clear sky GHI using Ineichen model and
@@ -133,7 +134,7 @@ class MicrogridTester:
 
         return (r_o * (1 - (.75 * (cloud_coverage ** 3.4))))
 
-    def get_solar_positions(lat, lon, tz, altitude, start_time, end_time, name):
+    def get_solar_positions(self, lat, lon, tz, altitude, start_time, end_time, name):
         """
         Calculate the solar positions for the given location from start to end time.
         :param lat (float): the latitude of the the location
@@ -146,7 +147,8 @@ class MicrogridTester:
         :return: solar_position (DataFrame)
         """
         # Definition of Location object.
-        site = Location(lat, lon, tz, altitude, name) # latitude, longitude, time_zone, altitude, name
+        site = Location(lat, lon) # latitude, longitude, time_zone, altitude, name
+        #print(str(site))
 
         # Definition of a time range of simulation
         times = pd.date_range(start_time, end_time, inclusive='left', freq='H', tz=site.tz)
@@ -155,7 +157,6 @@ class MicrogridTester:
         solpos = site.get_solarposition(times)
 
         return solpos
-
 
     def calculate_sol_radiation(time_index, sol_elevations, forecast_data, y, x):
 
