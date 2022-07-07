@@ -40,6 +40,81 @@ class MicrogridTester:
         print(f"Actual Lat Lon: {str(self.actLat)} {str(self.actLon)}")
         print(f"Inject Lat Lon: {str(self.injLat)} {str(self.injLon)}")
 
+    def cloud_cover_to_ghi_linear(cloud_cover, ghi_clear, offset=35,
+                              **kwargs):
+        """
+        Convert cloud cover to GHI using a linear relationship.
+        0% cloud cover returns ghi_clear.
+        100% cloud cover returns offset*ghi_clear.
+        Parameters
+        ----------
+        cloud_cover: numeric
+            Cloud cover in %.
+        ghi_clear: numeric
+            GHI under clear sky conditions.
+        offset: numeric, default 35
+            Determines the minimum GHI.
+        kwargs
+            Not used.
+        Returns
+        -------
+        ghi: numeric
+            Estimated GHI.
+        References
+        ----------
+        Larson et. al. "Day-ahead forecasting of solar power output from
+        photovoltaic plants in the American Southwest" Renewable Energy
+        91, 11-20 (2016).
+        """
+
+        offset = offset / 100.
+        cloud_cover = cloud_cover / 100.
+        ghi = (offset + (1 - offset) * (1 - cloud_cover)) * ghi_clear
+        return ghi
+
+    def cloud_cover_to_irradiance_clearsky_scaling(self, cloud_cover,
+                                               method='linear',
+                                               **kwargs):
+        """
+        Estimates irradiance from cloud cover in the following steps:
+        1. Determine clear sky GHI using Ineichen model and
+        climatological turbidity.
+        2. Estimate cloudy sky GHI using a function of
+        cloud_cover e.g.
+        :py:meth:`~ForecastModel.cloud_cover_to_ghi_linear`
+        3. Estimate cloudy sky DNI using the DISC model.
+        4. Calculate DHI from DNI and GHI.
+        Parameters
+        ----------
+        cloud_cover : Series
+            Cloud cover in %.
+        method : str, default 'linear'
+            Method for converting cloud cover to GHI.
+            'linear' is currently the only option.
+        **kwargs
+            Passed to the method that does the conversion
+        Returns
+        -------
+        irrads : DataFrame
+            Estimated GHI, DNI, and DHI.
+        """
+        solpos = self.location.get_solarposition(cloud_cover.index)
+        cs = self.location.get_clearsky(cloud_cover.index, model='ineichen',
+                                        solar_position=solpos)
+
+        method = method.lower()
+        if method == 'linear':
+            ghi = self.cloud_cover_to_ghi_linear(cloud_cover, cs['ghi'],
+                                                **kwargs)
+        else:
+            raise ValueError('invalid method argument')
+
+        dni = disc(ghi, solpos['zenith'], cloud_cover.index)['dni']
+        dhi = ghi - dni * np.cos(np.radians(solpos['zenith']))
+
+        irrads = pd.DataFrame({'ghi': ghi, 'dni': dni, 'dhi': dhi}).fillna(0)
+        return irrads
+
     def solar_radiation(solar_elevation_current, solar_elevation_previous, cloud_coverage):
         """
         Calculate the solar radiation based upon the suns elevation angle currently and previously 
@@ -57,6 +132,56 @@ class MicrogridTester:
         r_o = 990 * math.sin(math.radians(avg_angle - 30))
 
         return (r_o * (1 - (.75 * (cloud_coverage ** 3.4))))
+
+    def get_solar_positions(lat, lon, tz, altitude, start_time, end_time, name):
+        """
+        Calculate the solar positions for the given location from start to end time.
+        :param lat (float): the latitude of the the location
+        :param lon (float): the longiturde of the location
+        :param tz (str): the timezone of the location
+        :param altitude (float): the elevation above MSL
+        :param start_time (str): start time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
+        :param end_time (str): end time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
+        :param name (str): the name desired for this object to be called
+        :return: solar_position (DataFrame)
+        """
+        # Definition of Location object.
+        site = Location(lat, lon, tz, altitude, name) # latitude, longitude, time_zone, altitude, name
+
+        # Definition of a time range of simulation
+        times = pd.date_range(start_time, end_time, inclusive='left', freq='H', tz=site.tz)
+
+        # Estimate Solar Position with the 'Location' object
+        solpos = site.get_solarposition(times)
+
+        return solpos
+
+
+    def calculate_sol_radiation(time_index, sol_elevations, forecast_data, y, x):
+
+        total = 0
+
+        for i in range(1, len(time_index)):
+            cloud_cov = forecast_data.variables['Total_cloud_cover_entire_atmosphere'][i-1, y, x]
+            sol_rad = solar_radiation(sol_elevations[i], sol_elevations[i-1], cloud_cov/100)
+            if sol_rad >= 0:
+                total += sol_rad
+
+        return total
+
+    def calculate_power_output(dset, config, rounding=1):
+        solpos = get_solar_positions(config['lat'], config['lon'], config['tz'],
+                                    config['altitude'], config['start_time'],
+                                    config['end_time'], config['location_name'])
+
+        time_index = []
+        sol_elevation = []
+        for index, row in solpos.iterrows():
+            time_index.append(index)
+            sol_elevation.append(row['apparent_elevation'])
+
+        total_actual_forecast = round(calculate_sol_radiation(time_index, sol_elevation, dset, 0, 0), rounding)
+        return total_actual_forecast
 
     def testFiles(self):
 
