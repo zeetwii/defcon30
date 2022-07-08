@@ -54,8 +54,6 @@ class MicrogridTester:
         print(f"Start Time (UTC): {str(self.startTime)}")
         print(f"End Time (UTC): {str(self.endTime)}")
 
-
-
         #tempData = self.get_solar_positions(37.8933, -122.2974, 100, 'US/Pacific', '2022-06-15 00:00:00', '2022-06-16 00:00:00', 'LBNL')
         #tempData = self.get_solar_positions(float(self.actLat), float(self.actLon), self.startTime, self.endTime)
         #print(str(tempData))
