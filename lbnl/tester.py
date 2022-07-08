@@ -1,6 +1,7 @@
 import glob # needed for file view
 import netCDF4 # needed for weather files
 import sys # needed to exit
+from datetime import datetime, timedelta # needed for time calcs
 import pandas as pd
 from pvlib.location import Location
 import math
@@ -32,16 +33,32 @@ class MicrogridTester:
         injectLatMax = self.inject.geospatial_lat_max
         injectLonMax = self.inject.geospatial_lon_max
 
+        # calc the average lat lon
         self.actLat = float((float(actualLatMax) + float(actualLatMin)) / 2)
         self.actLon = float((float(actualLonMax) + float(actualLonMin)) / 2)
         self.injLat = float((float(injectLatMax) + float(injectLatMin)) / 2)
         self.injLon = float((float(injectLonMax) + float(injectLonMin)) / 2)
 
+        # figure out the run length based on if inject or real is shorter
+        runLength = 0
+        if len(self.actual['time']) < len(self.inject['time']):
+            runLength = len(self.actual['time']) 
+        else:
+            runLength = len(self.inject['time']) 
+
+        self.startTime = datetime.utcnow() # stay in UTC
+        self.endTime = self.startTime + timedelta(hours=runLength)
+
         print(f"Actual Lat Lon: {str(self.actLat)} {str(self.actLon)}")
         print(f"Inject Lat Lon: {str(self.injLat)} {str(self.injLon)}")
+        print(f"Start Time (UTC): {str(self.startTime)}")
+        print(f"End Time (UTC): {str(self.endTime)}")
 
-        tempData = self.get_solar_positions(37.8933, -122.2974, 100, 'US/Pacific', '2022-06-15 00:00:00', '2022-06-16 00:00:00', 'LBNL')
-        print(str(tempData))
+
+
+        #tempData = self.get_solar_positions(37.8933, -122.2974, 100, 'US/Pacific', '2022-06-15 00:00:00', '2022-06-16 00:00:00', 'LBNL')
+        #tempData = self.get_solar_positions(float(self.actLat), float(self.actLon), self.startTime, self.endTime)
+        #print(str(tempData))
 
     def cloud_cover_to_ghi_linear(cloud_cover, ghi_clear, offset=35,
                               **kwargs):
@@ -134,7 +151,7 @@ class MicrogridTester:
 
         return (r_o * (1 - (.75 * (cloud_coverage ** 3.4))))
 
-    def get_solar_positions(self, lat, lon, tz, altitude, start_time, end_time, name):
+    def get_solar_positions(self, lat, lon, start_time, end_time):
         """
         Calculate the solar positions for the given location from start to end time.
         :param lat (float): the latitude of the the location
