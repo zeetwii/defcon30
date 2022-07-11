@@ -54,7 +54,6 @@ class MicrogridTester:
         print(f"Start Time (UTC): {str(self.startTime)}")
         print(f"End Time (UTC): {str(self.endTime)}")
 
-        #tempData = self.get_solar_positions(37.8933, -122.2974, 100, 'US/Pacific', '2022-06-15 00:00:00', '2022-06-16 00:00:00', 'LBNL')
         #tempData = self.get_solar_positions(float(self.actLat), float(self.actLon), self.startTime, self.endTime)
         #print(str(tempData))
 
@@ -154,11 +153,8 @@ class MicrogridTester:
         Calculate the solar positions for the given location from start to end time.
         :param lat (float): the latitude of the the location
         :param lon (float): the longiturde of the location
-        :param tz (str): the timezone of the location
-        :param altitude (float): the elevation above MSL
         :param start_time (str): start time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
         :param end_time (str): end time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
-        :param name (str): the name desired for this object to be called
         :return: solar_position (DataFrame)
         """
         # Definition of Location object.
@@ -173,20 +169,20 @@ class MicrogridTester:
 
         return solpos
 
-    def calculate_sol_radiation(time_index, sol_elevations, forecast_data, y, x):
+    def calculate_sol_radiation(self, time_index, sol_elevations, forecast_data, y, x):
 
         total = 0
 
         for i in range(1, len(time_index)):
             cloud_cov = forecast_data.variables['Total_cloud_cover_entire_atmosphere'][i-1, y, x]
-            sol_rad = solar_radiation(sol_elevations[i], sol_elevations[i-1], cloud_cov/100)
+            sol_rad = self.solar_radiation(sol_elevations[i], sol_elevations[i-1], cloud_cov/100)
             if sol_rad >= 0:
                 total += sol_rad
 
         return total
 
-    def calculate_power_output(dset, config, rounding=1):
-        solpos = get_solar_positions(config['lat'], config['lon'], config['tz'],
+    def calculate_power_output(self, dset, config, rounding=1):
+        solpos = self.get_solar_positions(config['lat'], config['lon'], config['tz'],
                                     config['altitude'], config['start_time'],
                                     config['end_time'], config['location_name'])
 
@@ -196,7 +192,7 @@ class MicrogridTester:
             time_index.append(index)
             sol_elevation.append(row['apparent_elevation'])
 
-        total_actual_forecast = round(calculate_sol_radiation(time_index, sol_elevation, dset, 0, 0), rounding)
+        total_actual_forecast = round(self.calculate_sol_radiation(time_index, sol_elevation, dset, 0, 0), rounding)
         return total_actual_forecast
 
     def testFiles(self):
