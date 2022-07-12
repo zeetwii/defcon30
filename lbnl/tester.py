@@ -2,9 +2,10 @@ import glob # needed for file view
 import netCDF4 # needed for weather files
 import sys # needed to exit
 from datetime import datetime, timedelta # needed for time calcs
+import numpy as np # needed for stuff
 import pandas as pd
-from pvlib.location import Location
-import math
+import pvlib # needed for pv calc
+import math # needed for wind calcs
 
 
 class MicrogridTester:
@@ -57,7 +58,7 @@ class MicrogridTester:
         #tempData = self.get_solar_positions(float(self.actLat), float(self.actLon), self.startTime, self.endTime)
         #print(str(tempData))
 
-    def cloud_cover_to_ghi_linear(cloud_cover, ghi_clear, offset=35,
+    def cloud_cover_to_ghi_linear(self, cloud_cover, ghi_clear, offset=35,
                               **kwargs):
         """
         Convert cloud cover to GHI using a linear relationship.
@@ -113,8 +114,8 @@ class MicrogridTester:
         irrads : DataFrame
             Estimated GHI, DNI, and DHI.
         """
-        solpos = self.location.get_solarposition(cloud_cover.index)
-        cs = self.location.get_clearsky(cloud_cover.index, model='ineichen',
+        solpos = pvlib.location.Location.get_solarposition(cloud_cover.index)
+        cs = pvlib.location.Location.get_clearsky(cloud_cover.index, model='ineichen',
                                         solar_position=solpos)
 
         method = method.lower()
@@ -124,13 +125,13 @@ class MicrogridTester:
         else:
             raise ValueError('invalid method argument')
 
-        dni = disc(ghi, solpos['zenith'], cloud_cover.index)['dni']
+        dni = pvlib.irradiance.disc(ghi, solpos['zenith'], cloud_cover.index)['dni']
         dhi = ghi - dni * np.cos(np.radians(solpos['zenith']))
 
         irrads = pd.DataFrame({'ghi': ghi, 'dni': dni, 'dhi': dhi}).fillna(0)
         return irrads
 
-    def solar_radiation(solar_elevation_current, solar_elevation_previous, cloud_coverage):
+    def solar_radiation(self, solar_elevation_current, solar_elevation_previous, cloud_coverage):
         """
         Calculate the solar radiation based upon the suns elevation angle currently and previously 
         along with the total cloud coverage
@@ -158,11 +159,11 @@ class MicrogridTester:
         :return: solar_position (DataFrame)
         """
         # Definition of Location object.
-        site = Location(lat, lon) # latitude, longitude, time_zone, altitude, name
+        site = pvlib.location.Location(float(lat), float(lon)) # latitude, longitude, time_zone, altitude, name
         #print(str(site))
 
         # Definition of a time range of simulation
-        times = pd.date_range(start_time, end_time, inclusive='left', freq='H', tz=site.tz)
+        times = pd.date_range(start_time, end_time, inclusive='left', freq='H', tz="UTC")
 
         # Estimate Solar Position with the 'Location' object
         solpos = site.get_solarposition(times)
@@ -176,21 +177,25 @@ class MicrogridTester:
         for i in range(1, len(time_index)):
             cloud_cov = forecast_data.variables['Total_cloud_cover_entire_atmosphere'][i-1, y, x]
             sol_rad = self.solar_radiation(sol_elevations[i], sol_elevations[i-1], cloud_cov/100)
+
+            print(f"cloud cover: {str(cloud_cov)} solRad = {str(sol_rad)}")
+
             if sol_rad >= 0:
                 total += sol_rad
 
         return total
 
-    def calculate_power_output(self, dset, config, rounding=1):
-        solpos = self.get_solar_positions(config['lat'], config['lon'], config['tz'],
-                                    config['altitude'], config['start_time'],
-                                    config['end_time'], config['location_name'])
+    def calculate_power_output(self, dset, lat, lon, rounding=1):
+        solpos = self.get_solar_positions(lat, lon, self.startTime, self.endTime)
 
         time_index = []
         sol_elevation = []
         for index, row in solpos.iterrows():
             time_index.append(index)
             sol_elevation.append(row['apparent_elevation'])
+
+
+        print(str(sol_elevation))
 
         total_actual_forecast = round(self.calculate_sol_radiation(time_index, sol_elevation, dset, 0, 0), rounding)
         return total_actual_forecast
@@ -205,6 +210,60 @@ class MicrogridTester:
             testLen = len(self.inject['time'])
 
         print(f"Running {str(testLen)} tests using the provided files")
+
+        #actSol = self.calculate_power_output(self.actual, self.actLat, self.actLon)
+        #injSol = self.calculate_power_output(self.inject, self.injLat, self.injLon)
+        #print(f"\nActual Output: \n{str(actSol)}")
+        #print(f"\nInject Output: \n{str(injSol)}")
+
+        actWindAngle = self.calcWindAngle(self.actual, 0, 0, testLen)
+        injWindAngle = self.calcWindAngle(self.inject, 0, 0, testLen)
+        print(f"actual angles: {str(actWindAngle)}")
+        print(f"inject angles: {str(injWindAngle)}")
+
+        actWindSpeed = self.getWindSpeed(self.actual, 0, 0, testLen)
+        injWindSpeed = self.getWindSpeed(self.inject, 0, 0, testLen)
+        print(f"actual speed: {str(actWindSpeed)}")
+        print(f"inject speed: {str(injWindSpeed)}")
+
+        actCloudCoverage = self.getCloudCoverage(self.actual, 0, 0, testLen)
+        injCloudCoverage = self.getCloudCoverage(self.inject, 0, 0, testLen)
+        print(f"Actual cloud coverage: {str(actCloudCoverage)}")
+        print(f"Inject cloud coverage: {str(injCloudCoverage)}")
+
+
+    def calcWindAngle(self, dataSet, x, y, runTime):
+
+        angleList = []
+
+        for i in range(int(runTime)):
+            
+            #print(str(dataSet.variables['u-component_of_wind_height_above_ground'][i, int(x), int(y), 0]))
+            uComp = (float(dataSet.variables['u-component_of_wind_height_above_ground'][i, int(x), int(y), 0]))
+            vComp = (float(dataSet.variables['v-component_of_wind_height_above_ground'][i, int(x), int(y), 0]))
+
+            angleVal = math.fmod(180.0 + ((180.0 / math.pi) * math.atan2(vComp, uComp)), 360)
+            angleList.append(angleVal)
+
+        return angleList
+
+    def getWindSpeed(self, dataSet, x, y, runTime):
+
+        speedList = []
+
+        for i in range(runTime):
+            speedList.append(float(dataSet.variables['Wind_speed_gust_surface'][i, int(x), int(y)]))
+
+        return speedList
+
+    def getCloudCoverage(self, dataSet, x, y, runTime):
+
+        cloudCoverage = []
+
+        for i in range(runTime):
+            cloudCoverage.append(float(dataSet.variables['Total_cloud_cover_entire_atmosphere'][i, int(x), int(y)]))
+
+        return cloudCoverage
 
 
 if __name__ == "__main__":
