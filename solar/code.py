@@ -5,8 +5,6 @@ This code is intended to be run on the Solar Array portion of the workshop
 """
 
 import board  # needed for everything
-import digitalio  # needed for serial
-import time  # needed for sleep
 import neopixel  # needed for led control
 import struct  # needed for serial
 import busio  # needed for serial
@@ -83,18 +81,12 @@ def serial_loop():
             pixels[payload[0]] = (payload[1], payload[2], payload[3])
             uart.write("LED \n".encode())
         elif cmd == "top":
-            pixels[0] = (payload[0], payload[1], payload[2])
-            pixels[1] = (payload[0], payload[1], payload[2])
-            pixels[2] = (payload[0], payload[1], payload[2])
-            pixels[3] = (payload[0], payload[1], payload[2])
-            pixels[4] = (payload[0], payload[1], payload[2])
+            for i in range(0, 5):
+                pixels[i] = (payload[0], payload[1], payload[2])
             uart.write("TOP \n".encode())
         elif cmd == "btm":
-            pixels[5] = (payload[0], payload[1], payload[2])
-            pixels[6] = (payload[0], payload[1], payload[2])
-            pixels[7] = (payload[0], payload[1], payload[2])
-            pixels[8] = (payload[0], payload[1], payload[2])
-            pixels[9] = (payload[0], payload[1], payload[2])
+            for i in range(5, 10):
+                pixels[i] = (payload[0], payload[1], payload[2])
             uart.write("BTM \n".encode())
         elif cmd == "cir":
             pixels.fill([payload[0], payload[1], payload[2]])
@@ -123,13 +115,23 @@ def serial_loop():
             crickit.servo_4.angle = payload[3]
             uart.write("SRV \n".encode())
         elif cmd == "rst":
-            uart.write("RST \n".encode())
             initial_setup()
+            uart.write("RST \n".encode())
+        elif cmd == "who":
+            uart.write("SOL \n".encode())
+        elif cmd == "egg":
+            for i in range(0,10):
+                pixels[i] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                
+            for i in range(0,6):
+                houses[i] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+            uart.write("EGG \n".encode())
+            
         else:
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
 
 
-# Main method that launches everthing
+# Main method that launches everything
 def main():
     initial_setup()
     while True:

@@ -35,9 +35,6 @@ def initial_setup():
 
     # initialize the servo angles
     crickit.continuous_servo_1.throttle = 0.02
-    crickit.servo_2.angle = 90
-    crickit.servo_3.angle = 90
-    crickit.servo_4.angle = 90
 
     # initialize the LEDs
     pixels.fill([0,0,255])
@@ -90,26 +87,13 @@ def serial_loop():
             pixels[payload[0]] = (payload[1], payload[2], payload[3])
             uart.write("LED \n".encode())
         elif cmd == "top":
-            pixels[0] = (payload[0], payload[1], payload[2])
-            pixels[1] = (payload[0], payload[1], payload[2])
-            pixels[2] = (payload[0], payload[1], payload[2])
-            pixels[3] = (payload[0], payload[1], payload[2])
-            pixels[4] = (payload[0], payload[1], payload[2])
+            for i in range(0, 5):
+                pixels[i] = (payload[0], payload[1], payload[2])
             uart.write("TOP \n".encode())
         elif cmd == "btm":
-            pixels[5] = (payload[0], payload[1], payload[2])
-            pixels[6] = (payload[0], payload[1], payload[2])
-            pixels[7] = (payload[0], payload[1], payload[2])
-            pixels[8] = (payload[0], payload[1], payload[2])
-            pixels[9] = (payload[0], payload[1], payload[2])
+            for i in range(5, 10):
+                pixels[i] = (payload[0], payload[1], payload[2])
             uart.write("BTM \n".encode())
-        elif cmd == "top":
-            pixels[0] = (payload[0], payload[1], payload[2])
-            pixels[1] = (payload[0], payload[1], payload[2])
-            pixels[2] = (payload[0], payload[1], payload[2])
-            pixels[3] = (payload[0], payload[1], payload[2])
-            pixels[4] = (payload[0], payload[1], payload[2])
-            uart.write("TOP \n".encode())
         elif cmd == "all":
             pixels.fill([payload[0], payload[1], payload[2]])
             uart.write("ALL \n".encode())
@@ -122,24 +106,20 @@ def serial_loop():
             time.sleep(int(payload[0]))
             ss.digital_write(smoker, False)
             crickit.drive_1.fraction = 0.0
-            crickit.continuous_servo_1.throttle = .05
+            crickit.continuous_servo_1.throttle = 0.02
         elif cmd == "yaw":
-
-
             count = 0
             for i in range(1, len(payload)):
                 #print(str(payload[i]))
                 count = count + payload[i]
 
             #print(f"count: {str(count)}")
-
-            uart.write(f"YAW {str(count)}\n".encode())
-
-
-            if payload[0] == 1:
+            if payload[0] == 0:
+                uart.write(f"YAW F {str(count)}\n".encode())
                 for i in range(int(count)):
                     crickit.stepper_motor.onestep(direction=stepper.FORWARD, style=stepper.DOUBLE)
             else:
+                uart.write(f"YAW B {str(count)}\n".encode())
                 for i in range(int(count)):
                     crickit.stepper_motor.onestep(direction=stepper.BACKWARD, style=stepper.DOUBLE)
             crickit.stepper_motor.release()
@@ -149,6 +129,8 @@ def serial_loop():
         elif cmd == "rst":
             initial_setup()
             uart.write("RST \n".encode())
+        elif cmd == "who":
+            uart.write("WND \n".encode())
         else:
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
 
