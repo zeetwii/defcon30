@@ -3,21 +3,41 @@ import netCDF4 # needed for weather files
 import sys # needed to exit
 from datetime import datetime, timedelta # needed for time calcs
 import numpy as np # needed for stuff
-import pandas as pd
+import pandas as pd 
 import pvlib # needed for pv calc
 import math # needed for wind calcs
+
+import serial # needed for serial comms
+import serial.tools.list_ports # needed to list com ports
+import time # needed for sleep
+import struct # needed for serial messages
+import random # needed for random
+
 
 
 class MicrogridTester:
 
-    def __init__(self, actual, injected):
+    def __init__(self, actual, injected, sol, wnd):
         """
         Init method
 
         Args:
             actual (str): The file path to the NetCDF4 file representing the real weather
             injected (str): The file path to the NetCDF4 file representing the injected weather
+            sol (str): The COM port to use to talk to the solar grid
+            wnd (str): The COM port to use to talk to the wind turbine
         """
+
+        # Set up serial interfaces
+        if sol != "None":
+            self.sol = serial.Serial(sol, 9600, timeout=0.1)
+        else:
+            self.sol = "None"
+
+        if wnd != "None":
+            self.wnd = serial.Serial(wnd, 9600, timeout=0.1)
+        else:
+            self.wnd = "None"
 
         self.actual = netCDF4.Dataset(actual, 'r+')
         self.inject = netCDF4.Dataset(injected, 'r+')
@@ -203,6 +223,7 @@ class MicrogridTester:
     def testFiles(self):
 
         testLen = 0 # default
+        solarAngle = 0 # default
 
         if len(self.actual['time']) < len(self.inject['time']): # check which has a shorter run time
             testLen = len(self.actual['time'])
@@ -210,26 +231,102 @@ class MicrogridTester:
             testLen = len(self.inject['time'])
 
         print(f"Running {str(testLen)} tests using the provided files")
-
-        #actSol = self.calculate_power_output(self.actual, self.actLat, self.actLon)
-        #injSol = self.calculate_power_output(self.inject, self.injLat, self.injLon)
-        #print(f"\nActual Output: \n{str(actSol)}")
-        #print(f"\nInject Output: \n{str(injSol)}")
+        solarJump = int(180 / int(testLen))
+        #print(str(solarJump))
 
         actWindAngle = self.calcWindAngle(self.actual, 0, 0, testLen)
         injWindAngle = self.calcWindAngle(self.inject, 0, 0, testLen)
-        print(f"actual angles: {str(actWindAngle)}")
-        print(f"inject angles: {str(injWindAngle)}")
+        #print(f"actual angles: {str(actWindAngle)}")
+        #print(f"inject angles: {str(injWindAngle)}")
 
         actWindSpeed = self.getWindSpeed(self.actual, 0, 0, testLen)
         injWindSpeed = self.getWindSpeed(self.inject, 0, 0, testLen)
-        print(f"actual speed: {str(actWindSpeed)}")
-        print(f"inject speed: {str(injWindSpeed)}")
+        #print(f"actual speed: {str(actWindSpeed)}")
+        #print(f"inject speed: {str(injWindSpeed)}")
 
         actCloudCoverage = self.getCloudCoverage(self.actual, 0, 0, testLen)
         injCloudCoverage = self.getCloudCoverage(self.inject, 0, 0, testLen)
-        print(f"Actual cloud coverage: {str(actCloudCoverage)}")
-        print(f"Inject cloud coverage: {str(injCloudCoverage)}")
+        #print(f"Actual cloud coverage: {str(actCloudCoverage)}")
+        #print(f"Inject cloud coverage: {str(injCloudCoverage)}")
+
+        actualTemperature = self.getTemperature(self.actual, 0, 0, testLen)
+        injTemperature = self.getTemperature(self.inject, 0, 0, testLen)
+        #print(f"Actual Temperature: {str(actualTemperature)}")
+        #print(f"Inject Temperature: {str(injTemperature)}")
+
+        # Run through all the hours
+        for i in range(testLen):
+
+            print(f"Running simulation for hour {str(i)}")
+
+            self.payloadInterface('sol', 'srv', [solarAngle, solarAngle, solarAngle, solarAngle])
+
+
+            if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706 or float(injTemperature[i]) == 0 or float(injTemperature[i]) >= 373.15: # check for easter egg states
+                if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
+                    self.payloadInterface('wnd', 'spn', [4])
+                    time.sleep(0.1)
+                    for i in range(5):
+                        self.payloadInterface('sol', 'egg', [1])   
+                        self.payloadInterface('wnd', 'all', [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+                        time.sleep(1)
+                elif float(injTemperature[i]) == 0:
+                    self.payloadInterface('sol', 'all', [0, 0, 0])
+                    self.payloadInterface('wnd', 'spn', [0])
+                    time.sleep(5)
+                elif float(injTemperature[i]) >= 373.15: 
+                    self.payloadInterface('sol', 'all', [255, 76, 0])
+                    self.payloadInterface('wnd', 'smk', [5])
+                    time.sleep(5)
+            '''else: #Run normal
+                # Wind stuff
+                if actWindSpeed[i] >= injWindSpeed[i]:
+                    if round(actWindSpeed[i]) <= 80:
+                        self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
+                        self.payloadInterface('sol', 'wnd', [0, 0, 255])
+                        
+                    else:
+                        self.payloadInterface('wnd', 'spn', [0])
+                        self.payloadInterface('sol', 'wnd', [0, 0, 0])
+                        self.payloadInterface('wnd', 'smk', [5])
+
+                elif (injWindSpeed[i]) >= 80:
+                    self.payloadInterface('wnd', 'spn', [0])
+                    self.payloadInterface('sol', 'wnd', [0, 0, 0])
+                    time.sleep(0.1)
+                else:
+                    self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
+
+                    if abs(actWindSpeed[i] - injWindSpeed[i]) >= 60:
+                        self.payloadInterface('sol', 'wnd', [255, 0, 0])
+                    elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 40:
+                        self.payloadInterface('sol', 'wnd', [0, 255, 0])
+                    else:
+                        self.payloadInterface('sol', 'wnd', [0, 0, 255])
+
+                # solar stuff
+                if abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 80:
+                    self.payloadInterface('sol', 'wnd', [0, 0, 0])
+                elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 60:
+                    self.payloadInterface('sol', 'wnd', [255, 0, 0])
+                elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 40:
+                    self.payloadInterface('sol', 'wnd', [0, 255, 0])
+                else:
+                    self.payloadInterface('sol', 'wnd', [0, 0, 255])
+
+
+                # time.sleep(5)'''
+            solarAngle = solarAngle + solarJump
+            #time.sleep(5)
+        
+        self.payloadInterface('sol', 'rst', [1])
+        time.sleep(0.1)
+        self.payloadInterface('sol', 'rst', [1])
+        time.sleep(0.1)
+        self.payloadInterface('wnd', 'rst', [1])
+        time.sleep(0.1)
+        self.payloadInterface('wnd', 'rst', [1])
+        
 
 
     def calcWindAngle(self, dataSet, x, y, runTime):
@@ -265,6 +362,76 @@ class MicrogridTester:
 
         return cloudCoverage
 
+    def getTemperature(self, dataSet, x, y, runTime):
+
+        tempList = []
+
+        for i in range(runTime):
+            tempList.append(float(dataSet.variables['Temperature_height_above_ground'][i, int(x), int(y), 0]))
+            #print(str(dataSet.variables['Temperature_height_above_ground'][i, int(x), int(y)]))
+
+        return tempList
+
+    def payloadInterface(self, system, cmd, payloadArray):
+        '''Handles sending commands to the payload over serial and returns the response'''
+
+        fmt = "3s" + "B"*len(payloadArray)
+
+        #print(fmt)
+        #print(cmd)
+        #print(payloadArray)
+
+        packedData = struct.pack(fmt, cmd.encode(), *payloadArray)
+
+        #print(fmt)
+        if system == 'sol': # if sending message to solar grid
+            if self.sol != "None": # if grid exists
+                try:
+                    self.sol.reset_input_buffer()
+                    self.sol.reset_output_buffer()
+                    self.sol.write(packedData)
+                    self.sol.flush()
+                    time.sleep(0.1)
+
+                    data = self.sol.read(32)
+                    while len(data.decode()) < 1:
+                        self.sol.write(packedData)
+                        self.sol.flush()
+                        time.sleep(0.1)
+                        data = self.sol.read(32)
+                        time.sleep(0.1)
+                    #print(data.decode())
+                except IOError:
+                    print("ERROR, SOL TIMEOUT")
+        elif system == 'wnd': #if sending message to wind turbine
+            if self.wnd != "None": #if turbine exists
+                try:
+                    self.wnd.reset_input_buffer()
+                    self.wnd.reset_output_buffer()
+                    self.wnd.write(packedData)
+                    self.wnd.flush()
+                    time.sleep(0.1)
+
+                    data = self.wnd.read(32)
+                    while len(data.decode()) < 1:
+                        self.wnd.write(packedData)
+                        self.wnd.flush()
+                        time.sleep(0.1)
+                        data = self.wnd.read(32)
+                        time.sleep(0.1)
+                    #print(data.decode())
+
+                    if "ERROR" in data.decode():
+                        #print("test")
+                        self.wnd.write(packedData)
+                        self.wnd.flush()
+                        time.sleep(0.1)
+                        data = self.wnd.read(32)
+                        time.sleep(0.1)
+
+                except IOError:
+                    print("ERROR, WND TIMEOUT")
+
 
 if __name__ == "__main__":
     files = glob.glob('./*.nc')
@@ -291,6 +458,7 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(actChoice)])} for actual data')
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
-            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]))
+            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM21')
             tester.testFiles()
+            
 

@@ -132,10 +132,12 @@ def serial_loop():
         elif cmd == "who":
             uart.write("WND \n".encode())
         else:
+            uart.reset_input_buffer()
+            print(f"Unknown command: {cmd}")
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
 
 
-# Main method that launches everthing
+# Main method that launches everything
 def main():
     initial_setup()
     while True:

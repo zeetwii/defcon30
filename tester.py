@@ -1,7 +1,6 @@
 import threading    # needed for threading
 import time         # needed for sleep
 import struct       # needed for serial
-import random       # used for random
 import serial   # needed for serial
 import random # needed for random
 import binascii # needed for hex decoding
@@ -12,8 +11,8 @@ class SerialTester:
 
     def __init__(self, com1, com2):
 
-        self.pay1 = serial.Serial(com1, 115200, timeout=0.1)
-        #self.pay2 = serial.Serial(com2, 115200, timeout=0.1)
+        self.pay1 = serial.Serial(com1, 9600, timeout=0.1)
+        self.pay2 = serial.Serial(com2, 9600, timeout=0.1)
 
 
 
@@ -69,7 +68,7 @@ class SerialTester:
 if __name__ == "__main__":
 
     print("Running Serial tester")
-    tester = SerialTester("COM13", "COM17")
+    tester = SerialTester("COM13", "COM21")
 
     print("Message format: [target] [command] [payload]")
 

@@ -128,6 +128,8 @@ def serial_loop():
             uart.write("EGG \n".encode())
             
         else:
+            uart.reset_input_buffer()
+            print(f"Unknown command: {cmd}")
             uart.write("ERROR, UNKNOWN COMMAND\n".encode())
 
 
