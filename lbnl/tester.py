@@ -5,7 +5,8 @@ from datetime import datetime, timedelta # needed for time calcs
 import numpy as np # needed for stuff
 import pandas as pd 
 import pvlib # needed for pv calc
-import math # needed for wind calcs
+import math
+from scipy import rand # needed for wind calcs
 
 import serial # needed for serial comms
 import serial.tools.list_ports # needed to list com ports
@@ -165,7 +166,57 @@ class MicrogridTester:
                 windWarn = windWarn + 1
 
 
-            print(f"Easter Egg: {str(easterEgg)} \nWindWarn: {str(windWarn)} \nSolWarn: {str(solWarn)} \nSol Angle: {str(solarAngle)} \n")
+            #print(f"Easter Egg: {str(easterEgg)} \nWindWarn: {str(windWarn)} \nSolWarn: {str(solWarn)} \nSol Angle: {str(solarAngle)} \n")
+
+            if easterEgg:
+                if easterEgg == 1:
+                    self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
+                    for i in range(5):
+                        self.payloadInterface('sol', 'egg', [1])  
+                        self.payloadInterface('wnd', 'all', [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
+                        time.sleep(1)
+                elif easterEgg == 2:
+                    self.payloadInterface('wnd', 'spn', [0])
+                    self.payloadInterface('sol', 'all', [0, 0, 0])
+                    self.payloadInterface('wnd', 'all', [0, 0, 0])
+                    time.sleep(5)
+                else:
+                    self.payloadInterface('wnd', 'all', [255, 76, 0])
+                    self.payloadInterface('sol', 'all', [255, 76, 0])
+                    self.payloadInterface('wnd', 'smk', [5])
+                    time.sleep(5)
+            else: #Run normal
+                if windWarn < 6:
+                    self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
+                    for i in range(5):
+                        if solWarn < 3:
+                            self.payloadInterface('sol', 'sol', [random.randint(0, 100), random.randint(150, 255), random.randint(0, 100)])  
+                        elif solWarn < 5:
+                            self.payloadInterface('sol', 'sol', [random.randint(150, 255), random.randint(150, 255), random.randint(0, 100)])
+                        else: 
+                            self.payloadInterface('sol', 'sol', [random.randint(150, 255), random.randint(0, 100), random.randint(0, 100)])
+                        
+                        if windWarn < 3:
+                            self.payloadInterface('sol', 'wnd', [random.randint(0, 100), random.randint(150, 255), random.randint(0, 100)])
+                        elif windWarn < 5:
+                            self.payloadInterface('sol', 'wnd', [random.randint(150, 255), random.randint(150, 255), random.randint(0, 100)])
+                        else:
+                            self.payloadInterface('sol', 'wnd', [random.randint(150, 255), random.randint(0, 100), random.randint(0, 100)])
+                        time.sleep(1)
+                else:
+                    if solWarn < 3:
+                        self.payloadInterface('sol', 'sol', [random.randint(0, 100), random.randint(0, 100), random.randint(150, 255)])  
+                    elif solWarn < 5:
+                        self.payloadInterface('sol', 'sol', [random.randint(150, 255), random.randint(0, 100), random.randint(150, 255)])
+                    else: 
+                        self.payloadInterface('sol', 'sol', [random.randint(150, 255), random.randint(0, 100), random.randint(0, 100)])
+
+                    self.payloadInterface('sol', 'wnd', [255, 0, 0])
+                    self.payloadInterface('wnd', 'smk', [5])
+                    time.sleep(5)
+            
+
+
 
 
             '''
@@ -365,8 +416,8 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(actChoice)])} for actual data')
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
-            #tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM21')
-            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'None', 'None')
+            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM17', 'COM13')
+            #tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'None', 'None')
             tester.testFiles()
             
 
