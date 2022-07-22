@@ -78,148 +78,6 @@ class MicrogridTester:
         #tempData = self.get_solar_positions(float(self.actLat), float(self.actLon), self.startTime, self.endTime)
         #print(str(tempData))
 
-    def cloud_cover_to_ghi_linear(self, cloud_cover, ghi_clear, offset=35,
-                              **kwargs):
-        """
-        Convert cloud cover to GHI using a linear relationship.
-        0% cloud cover returns ghi_clear.
-        100% cloud cover returns offset*ghi_clear.
-        Parameters
-        ----------
-        cloud_cover: numeric
-            Cloud cover in %.
-        ghi_clear: numeric
-            GHI under clear sky conditions.
-        offset: numeric, default 35
-            Determines the minimum GHI.
-        kwargs
-            Not used.
-        Returns
-        -------
-        ghi: numeric
-            Estimated GHI.
-        References
-        ----------
-        Larson et. al. "Day-ahead forecasting of solar power output from
-        photovoltaic plants in the American Southwest" Renewable Energy
-        91, 11-20 (2016).
-        """
-
-        offset = offset / 100.
-        cloud_cover = cloud_cover / 100.
-        ghi = (offset + (1 - offset) * (1 - cloud_cover)) * ghi_clear
-        return ghi
-
-    def cloud_cover_to_irradiance_clearsky_scaling(self, cloud_cover, method='linear', **kwargs):
-        """
-        Estimates irradiance from cloud cover in the following steps:
-        1. Determine clear sky GHI using Ineichen model and
-        climatological turbidity.
-        2. Estimate cloudy sky GHI using a function of
-        cloud_cover e.g.
-        :py:meth:`~ForecastModel.cloud_cover_to_ghi_linear`
-        3. Estimate cloudy sky DNI using the DISC model.
-        4. Calculate DHI from DNI and GHI.
-        Parameters
-        ----------
-        cloud_cover : Series
-            Cloud cover in %.
-        method : str, default 'linear'
-            Method for converting cloud cover to GHI.
-            'linear' is currently the only option.
-        **kwargs
-            Passed to the method that does the conversion
-        Returns
-        -------
-        irrads : DataFrame
-            Estimated GHI, DNI, and DHI.
-        """
-        solpos = pvlib.location.Location.get_solarposition(cloud_cover.index)
-        cs = pvlib.location.Location.get_clearsky(cloud_cover.index, model='ineichen',
-                                        solar_position=solpos)
-
-        method = method.lower()
-        if method == 'linear':
-            ghi = self.cloud_cover_to_ghi_linear(cloud_cover, cs['ghi'],
-                                                **kwargs)
-        else:
-            raise ValueError('invalid method argument')
-
-        dni = pvlib.irradiance.disc(ghi, solpos['zenith'], cloud_cover.index)['dni']
-        dhi = ghi - dni * np.cos(np.radians(solpos['zenith']))
-
-        irrads = pd.DataFrame({'ghi': ghi, 'dni': dni, 'dhi': dhi}).fillna(0)
-        return irrads
-
-    def solar_radiation(self, solar_elevation_current, solar_elevation_previous, cloud_coverage):
-        """
-        Calculate the solar radiation based upon the suns elevation angle currently and previously 
-        along with the total cloud coverage
-
-        Args:
-            solar_elevation_current (float): current solar elevation in degrees
-            solar_elevation_previous (float): previous solar elevation in degrees
-            cloud_coverage (float): percentage of cloud coverage from 0.0 - 1.0
-
-        Returns:
-            float: the solar radiation for the given location
-        """
-        avg_angle = (solar_elevation_previous + solar_elevation_current)/2
-        r_o = 990 * math.sin(math.radians(avg_angle - 30))
-
-        return (r_o * (1 - (.75 * (cloud_coverage ** 3.4))))
-
-    def get_solar_positions(self, lat, lon, start_time, end_time):
-        """
-        Calculate the solar positions for the given location from start to end time.
-        :param lat (float): the latitude of the the location
-        :param lon (float): the longiturde of the location
-        :param start_time (str): start time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
-        :param end_time (str): end time in YYYY-MM-DD HH:MM:SS format (i.e. 2022-06-15 00:00:00)
-        :return: solar_position (DataFrame)
-        """
-        # Definition of Location object.
-        site = pvlib.location.Location(float(lat), float(lon)) # latitude, longitude, time_zone, altitude, name
-        #print(str(site))
-
-        # Definition of a time range of simulation
-        times = pd.date_range(start_time, end_time, inclusive='left', freq='H', tz="UTC")
-
-        # Estimate Solar Position with the 'Location' object
-        solpos = site.get_solarposition(times)
-
-        return solpos
-
-    def calculate_sol_radiation(self, time_index, sol_elevations, forecast_data, y, x):
-
-        total = 0
-
-        for i in range(1, len(time_index)):
-            cloud_cov = forecast_data.variables['Total_cloud_cover_entire_atmosphere'][i-1, y, x]
-            sol_rad = self.solar_radiation(sol_elevations[i], sol_elevations[i-1], cloud_cov/100)
-
-            print(f"cloud cover: {str(cloud_cov)} solRad = {str(sol_rad)}")
-
-            if sol_rad >= 0:
-                total += sol_rad
-
-        return total
-
-    def calculate_power_output(self, dset, lat, lon, rounding=1):
-        solpos = self.get_solar_positions(lat, lon, self.startTime, self.endTime)
-
-        time_index = []
-        sol_elevation = []
-        for index, row in solpos.iterrows():
-            time_index.append(index)
-            sol_elevation.append(row['apparent_elevation'])
-
-
-        print(str(sol_elevation))
-
-        total_actual_forecast = round(self.calculate_sol_radiation(time_index, sol_elevation, dset, 0, 0), rounding)
-        return total_actual_forecast
-
     def testFiles(self):
 
         testLen = 0 # default
@@ -261,7 +119,56 @@ class MicrogridTester:
 
             self.payloadInterface('sol', 'srv', [solarAngle, solarAngle, solarAngle, solarAngle])
 
+            easterEgg = 0
+            windWarn = 0
+            solWarn = 0
 
+            # check for easter eggs
+            if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
+                easterEgg = 1
+            elif float(injTemperature[i]) == 0: # absolute zero
+                easterEgg = 2
+            elif float(injTemperature[i]) >= 373.15:  # melting mode
+                easterEgg = 3
+
+            # check location
+            if self.actLat != self.injLat or self.actLon != self.injLon:
+                # if location is different add 1 warning point to each
+                windWarn = windWarn + 1
+                solWarn = solWarn + 1
+
+            # check temps
+            if abs(actualTemperature[i] - injTemperature[i]) >= 30:
+                windWarn = windWarn + 3
+                solWarn = solWarn + 3
+            elif abs(actualTemperature[i] - injTemperature[i]) >= 20:
+                windWarn = windWarn + 2
+                solWarn = solWarn + 2
+            elif abs(actualTemperature[i] - injTemperature[i]) >= 10:
+                windWarn = windWarn + 1
+                solWarn = solWarn + 1
+            
+            # check solar
+            if abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 90:
+                solWarn = solWarn + 6
+            elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 60:
+                solWarn = solWarn + 3
+            elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 30:
+                solWarn = solWarn + 1
+
+            # check wind
+            if abs(actWindSpeed[i] - injWindSpeed[i]) >= 75:
+                windWarn = windWarn + 6
+            elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 55:
+                windWarn = windWarn + 3
+            elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 25:
+                windWarn = windWarn + 1
+
+
+            print(f"Easter Egg: {str(easterEgg)} \nWindWarn: {str(windWarn)} \nSolWarn: {str(solWarn)} \nSol Angle: {str(solarAngle)} \n")
+
+
+            '''
             if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706 or float(injTemperature[i]) == 0 or float(injTemperature[i]) >= 373.15: # check for easter egg states
                 if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
                     self.payloadInterface('wnd', 'spn', [4])
@@ -278,7 +185,7 @@ class MicrogridTester:
                     self.payloadInterface('sol', 'all', [255, 76, 0])
                     self.payloadInterface('wnd', 'smk', [5])
                     time.sleep(5)
-            '''else: #Run normal
+            else: #Run normal
                 # Wind stuff
                 if actWindSpeed[i] >= injWindSpeed[i]:
                     if round(actWindSpeed[i]) <= 80:
@@ -458,7 +365,8 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(actChoice)])} for actual data')
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
-            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM21')
+            #tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM21')
+            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'None', 'None')
             tester.testFiles()
             
 
