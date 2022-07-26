@@ -29,6 +29,9 @@ class MicrogridTester:
             wnd (str): The COM port to use to talk to the wind turbine
         """
 
+        self.blockTime = 1 # number of seconds to run for each block
+        self.subTime = 0.25 # how long each sub interval of the block should be
+
         # Set up serial interfaces
         if sol != "None":
             self.sol = serial.Serial(sol, 9600, timeout=0.1)
@@ -120,9 +123,10 @@ class MicrogridTester:
 
             self.payloadInterface('sol', 'srv', [solarAngle, solarAngle, solarAngle, solarAngle])
 
-            easterEgg = 0
-            windWarn = 0
-            solWarn = 0
+            easterEgg = 0 # easter egg value
+            windWarn = 0 # total number of wind errors for the block
+            solWarn = 0 # total number of solar errors for the block
+            smoke = False # boolean for if doing the smoke special case
 
             # check for easter eggs
             if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
@@ -169,22 +173,22 @@ class MicrogridTester:
             #print(f"Easter Egg: {str(easterEgg)} \nWindWarn: {str(windWarn)} \nSolWarn: {str(solWarn)} \nSol Angle: {str(solarAngle)} \n")
 
             if easterEgg:
-                if easterEgg == 1:
+                if easterEgg == 1: # disco easter egg
                     self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
-                    for i in range(5):
+                    for i in range(round(self.blockTime / self.subTime)):
                         self.payloadInterface('sol', 'egg', [1])  
                         self.payloadInterface('wnd', 'all', [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
-                        time.sleep(1)
-                elif easterEgg == 2:
+                        time.sleep(self.subTime)
+                elif easterEgg == 2: # absolute zero easter egg
                     self.payloadInterface('wnd', 'spn', [0])
                     self.payloadInterface('sol', 'all', [0, 0, 0])
                     self.payloadInterface('wnd', 'all', [0, 0, 0])
-                    time.sleep(5)
+                    time.sleep(self.blockTime)
                 else:
                     self.payloadInterface('wnd', 'all', [255, 76, 0])
                     self.payloadInterface('sol', 'all', [255, 76, 0])
-                    self.payloadInterface('wnd', 'smk', [5])
-                    time.sleep(5)
+                    self.payloadInterface('wnd', 'smk', [self.blockTime])
+                    time.sleep(self.blockTime)
             else: #Run normal
                 if windWarn < 6:
                     self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
@@ -215,75 +219,13 @@ class MicrogridTester:
                     self.payloadInterface('wnd', 'smk', [5])
                     time.sleep(5)
             
-
-
-
-
-            '''
-            if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706 or float(injTemperature[i]) == 0 or float(injTemperature[i]) >= 373.15: # check for easter egg states
-                if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
-                    self.payloadInterface('wnd', 'spn', [4])
-                    time.sleep(0.1)
-                    for i in range(5):
-                        self.payloadInterface('sol', 'egg', [1])   
-                        self.payloadInterface('wnd', 'all', [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)])
-                        time.sleep(1)
-                elif float(injTemperature[i]) == 0:
-                    self.payloadInterface('sol', 'all', [0, 0, 0])
-                    self.payloadInterface('wnd', 'spn', [0])
-                    time.sleep(5)
-                elif float(injTemperature[i]) >= 373.15: 
-                    self.payloadInterface('sol', 'all', [255, 76, 0])
-                    self.payloadInterface('wnd', 'smk', [5])
-                    time.sleep(5)
-            else: #Run normal
-                # Wind stuff
-                if actWindSpeed[i] >= injWindSpeed[i]:
-                    if round(actWindSpeed[i]) <= 80:
-                        self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
-                        self.payloadInterface('sol', 'wnd', [0, 0, 255])
-                        
-                    else:
-                        self.payloadInterface('wnd', 'spn', [0])
-                        self.payloadInterface('sol', 'wnd', [0, 0, 0])
-                        self.payloadInterface('wnd', 'smk', [5])
-
-                elif (injWindSpeed[i]) >= 80:
-                    self.payloadInterface('wnd', 'spn', [0])
-                    self.payloadInterface('sol', 'wnd', [0, 0, 0])
-                    time.sleep(0.1)
-                else:
-                    self.payloadInterface('wnd', 'spn', [round(actWindSpeed[i])])
-
-                    if abs(actWindSpeed[i] - injWindSpeed[i]) >= 60:
-                        self.payloadInterface('sol', 'wnd', [255, 0, 0])
-                    elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 40:
-                        self.payloadInterface('sol', 'wnd', [0, 255, 0])
-                    else:
-                        self.payloadInterface('sol', 'wnd', [0, 0, 255])
-
-                # solar stuff
-                if abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 80:
-                    self.payloadInterface('sol', 'wnd', [0, 0, 0])
-                elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 60:
-                    self.payloadInterface('sol', 'wnd', [255, 0, 0])
-                elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 40:
-                    self.payloadInterface('sol', 'wnd', [0, 255, 0])
-                else:
-                    self.payloadInterface('sol', 'wnd', [0, 0, 255])
-
-
-                # time.sleep(5)'''
             solarAngle = solarAngle + solarJump
             #time.sleep(5)
         
         self.payloadInterface('sol', 'rst', [1])
         time.sleep(0.1)
-        self.payloadInterface('sol', 'rst', [1])
-        time.sleep(0.1)
         self.payloadInterface('wnd', 'rst', [1])
         time.sleep(0.1)
-        self.payloadInterface('wnd', 'rst', [1])
         
 
 
@@ -416,7 +358,7 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(actChoice)])} for actual data')
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
-            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM17', 'COM13')
+            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM18')
             #tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'None', 'None')
             tester.testFiles()
             
