@@ -223,9 +223,9 @@ class MicrogridTester:
             #time.sleep(5)
         
         self.payloadInterface('sol', 'rst', [1])
-        time.sleep(0.1)
+        #time.sleep(0.1)
         self.payloadInterface('wnd', 'rst', [1])
-        time.sleep(0.1)
+        #time.sleep(0.1)
         
 
 
@@ -358,7 +358,7 @@ if __name__ == "__main__":
             print(f'Using {str(files[int(actChoice)])} for actual data')
             print(f'Using {str(files[int(injChoice)])} for inject data')
 
-            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM28', 'COM13')
+            tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'COM13', 'COM32')
             #tester = MicrogridTester(str(files[int(actChoice)]), str(files[int(injChoice)]), 'None', 'None')
             tester.testFiles()
             
