@@ -110,7 +110,7 @@ class Editor:
         Interactive function that prompts the user for fields and values to edit.  
         This acts as an entry point for the other functions when the user is local.  
         """
-        
+
         print("\nList of editable variables:")
         var = list(self.dset.variables.keys())
         for i in range(len(var)):
@@ -122,25 +122,49 @@ class Editor:
 
             print(f"\n\n{str(var[int(choice)])}")
 
-            print(str(self.listField(str(var[int(choice)]), 'a')))
-
             if len(np.shape(self.dset[str(var[int(choice)])])) == 3: # editing a conventional weather field
 
-                time = input(f"Enter a time from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, or 'a' to do all: ")
-                print(str(self.listField(str(var[int(choice)]), time)))
+                while True:
 
-                row = len(self.dset[str(var[int(choice)])][0]) - 1
-                col = len(self.dset[str(var[int(choice)])][0][0]) - 1
+                    print("\n"+str(self.listField(str(var[int(choice)]), 'a')))
 
-                xVal = input(f"Enter the row number from 0 to {str(row)} to edit or 'a' for all: ")
-                yVal = input(f"Enter the column from 0 to {str(col)} to edit or 'a' for all: ")
-                value = input('Enter the new value of the field: ')
-                self.editWeatherField(str(var[int(choice)]), value, time, xVal, yVal)
+                    time = input(f"Enter a time from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, 'a' to do all, or anything else to go back: ")
+                    
+                    if (str(time).isdigit() and int(time) <= (len(self.dset[str(var[int(choice)])]) - 1)) or str(time).lower() == 'a':
+                        print(str(self.listField(str(var[int(choice)]), time)))
+                    else:
+                        break # nonvaid entry, exit loop
+
+                    row = len(self.dset[str(var[int(choice)])][0]) - 1
+                    col = len(self.dset[str(var[int(choice)])][0][0]) - 1
+
+                    xVal = input(f"Enter the row number from 0 to {str(row)} to edit or 'a' for all: ")
+                    
+                    if (str(xVal).isdigit() and int(xVal) <= row) or str(xVal).lower() == 'a':
+                        yVal = input(f"Enter the column from 0 to {str(col)} to edit or 'a' for all: ")
+
+                        if (str(yVal).isdigit() and int(yVal) <= col) or str(yVal).lower() == 'a':
+                            value = input('Enter the new value of the field: ')
+                            self.editWeatherField(str(var[int(choice)]), value, time, xVal, yVal)
+                        else:
+                            break # nonvaid entry, exit loop
+                    else:
+                        break # nonvaid entry, exit loop
+
+                    
             
             else: # editing one of the one dimensional fields
-                selction = input(f"Enter the selection from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, or 'a' to do all: ")
-                value = input('Enter the new value of the field: ')
-                self.editStatusField(str(var[int(choice)]), selction, value)
+
+                while True:
+                    print("\n"+str(self.listField(str(var[int(choice)]), 'a')))
+
+                    selction = input(f"Enter the selection from 0 to {str(len(self.dset[str(var[int(choice)])]) - 1)} to edit, 'a' to do all, or anything else to go back: ")
+                    
+                    if (str(selction).isdigit() and int(selction) <= (len(self.dset[str(var[int(choice)])]) - 1)) or str(selction).lower() == 'a':
+                        value = input('Enter the new value of the field: ')
+                        self.editStatusField(str(var[int(choice)]), selction, value)
+                    else:
+                        break # nonvaid entry, exit loop
 
 
         except IndexError:
@@ -156,7 +180,7 @@ if __name__ == "__main__":
         print("Please make sure that all netCDF files are using '.nc' as a file extension")
         sys.exit(1)
     else:
-        print("List of '.nc' files:")
+        print("List of '.nc' files: ")
         for i in range(len(files)):
 
             temp = str(files[i]).split('\\')
@@ -164,7 +188,7 @@ if __name__ == "__main__":
 
             print(f'File {str(i)} : {str(files[i])}')
 
-    fileChoice = input('Enter the number of the file to use, or anything to exit:')
+    fileChoice = input('Enter the number of the file to use, or anything to exit: ')
 
     if str(fileChoice).isdigit():
         if int(fileChoice) < len(files):
@@ -180,7 +204,7 @@ if __name__ == "__main__":
 
             while True:
                 try:
-                    print("Edit fields, or press CTRL+C to exit:")
+                    print("Edit fields, or press CTRL+C to exit: ")
                     editor.editInteractive()
                 except KeyboardInterrupt:
                     print("\nExiting")
