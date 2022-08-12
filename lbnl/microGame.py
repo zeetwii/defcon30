@@ -110,18 +110,19 @@ class MicrogridTester:
 
         actWindSpeed = self.getWindSpeed(self.actual, 0, 0, testLen)
         injWindSpeed = self.getWindSpeed(self.inject, 0, 0, testLen)
-        #print(f"actual speed: {str(actWindSpeed)}")
-        #print(f"inject speed: {str(injWindSpeed)}")
+        print(f"actual speed: {str(actWindSpeed)}")
+        print(f"inject speed: {str(injWindSpeed)}")
 
         actCloudCoverage = self.getCloudCoverage(self.actual, 0, 0, testLen)
         injCloudCoverage = self.getCloudCoverage(self.inject, 0, 0, testLen)
-        #print(f"Actual cloud coverage: {str(actCloudCoverage)}")
-        #print(f"Inject cloud coverage: {str(injCloudCoverage)}")
+        print(f"Actual cloud coverage: {str(actCloudCoverage)}")
+        print(f"Inject cloud coverage: {str(injCloudCoverage)}")
 
         actualTemperature = self.getTemperature(self.actual, 0, 0, testLen)
         injTemperature = self.getTemperature(self.inject, 0, 0, testLen)
-        #print(f"Actual Temperature: {str(actualTemperature)}")
-        #print(f"Inject Temperature: {str(injTemperature)}")
+        print(f"Actual Temperature: {str(actualTemperature)}")
+        print(f"Inject Temperature: {str(injTemperature)}")
+        print("\n\n")
 
         # Run through all the hours
         for i in range(testLen):
@@ -138,7 +139,7 @@ class MicrogridTester:
             # check for easter eggs
             if float(injTemperature[i]) == 69 or float(injTemperature[i]) == 342.15 or float(injTemperature[i]) == 293.706: # disco mode
                 easterEgg = 1
-            elif float(injTemperature[i]) == 0: # absolute zero
+            elif float(injTemperature[i]) <= 0: # absolute zero
                 easterEgg = 2
             elif float(injTemperature[i]) >= 373.15:  # melting mode
                 easterEgg = 3
@@ -161,19 +162,20 @@ class MicrogridTester:
                 solWarn = solWarn + 1
             
             # check solar
-            if abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 90:
+            #if abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 90:
+            if (actCloudCoverage[i] - injCloudCoverage[i]) >= 90:
                 solWarn = solWarn + 6
-            elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 60:
+            elif (actCloudCoverage[i] - injCloudCoverage[i]) >= 60:
                 solWarn = solWarn + 3
-            elif abs(actCloudCoverage[i] - injCloudCoverage[i]) >= 30:
+            elif (actCloudCoverage[i] - injCloudCoverage[i]) >= 30:
                 solWarn = solWarn + 1
 
             # check wind
-            if abs(actWindSpeed[i] - injWindSpeed[i]) >= 75:
+            if (actWindSpeed[i] - injWindSpeed[i]) >= 75:
                 windWarn = windWarn + 6
-            elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 55:
+            elif (actWindSpeed[i] - injWindSpeed[i]) >= 55:
                 windWarn = windWarn + 3
-            elif abs(actWindSpeed[i] - injWindSpeed[i]) >= 25:
+            elif (actWindSpeed[i] - injWindSpeed[i]) >= 25:
                 windWarn = windWarn + 1
 
 
@@ -228,6 +230,8 @@ class MicrogridTester:
             
             solarAngle = solarAngle + solarJump
             #time.sleep(5)
+
+            print(f"Hour Score: Wind Warning: {str(windWarn)}, Solar Warning: {str(solWarn)}, easter egg: {str(easterEgg)}")
         
         self.payloadInterface('sol', 'rst', [1])
         #time.sleep(0.1)
