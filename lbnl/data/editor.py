@@ -3,6 +3,7 @@ import netCDF4 # needed to read and edit netCDF4 files
 import shutil # needed to make a copy of the file
 import glob # needed to search current directory
 import sys # needed to exit
+import time # needed for timestamps
 
 
 class Editor:
@@ -173,44 +174,54 @@ class Editor:
             print("Error, incorrect value entered")
 
 if __name__ == "__main__":
-    files = glob.glob('./*.nc')
+    
+    while True:    
+        files = glob.glob('./*.nc')
 
-    if len(files) < 1:
-        print("No netCDF4 files found in current directory")
-        print("Please make sure that all netCDF files are using '.nc' as a file extension")
-        sys.exit(1)
-    else:
-        print("List of '.nc' files: ")
-        for i in range(len(files)):
+        if len(files) < 1:
+            print("No netCDF4 files found in current directory")
+            print("Please make sure that all netCDF files are using '.nc' as a file extension")
+            sys.exit(1)
+        else:
+            print("List of '.nc' files: ")
+            for i in range(len(files)):
 
-            temp = str(files[i]).split('\\')
-            files[i] = temp[len(temp) - 1]
+                temp = str(files[i]).split('\\')
+                files[i] = temp[len(temp) - 1]
 
-            print(f'File {str(i)} : {str(files[i])}')
+                print(f'File {str(i)} : {str(files[i])}')
 
-    fileChoice = input('Enter the number of the file to use, or anything to exit: ')
+        fileChoice = input('Enter the number of the file to use, or anything to exit: ')
 
-    if str(fileChoice).isdigit():
-        if int(fileChoice) < len(files):
-            print(f'Using {str(files[int(fileChoice)])}')
-            
-            tempFile = str(files[int(fileChoice)]).split('.')[0]
-            tempFile = tempFile + '-edit.nc'
+        if str(fileChoice).isdigit():
+            if int(fileChoice) < len(files):
+                print(f'Using {str(files[int(fileChoice)])}')
+                
+                tempFile = str(files[int(fileChoice)]).split('.')[0]
 
-            shutil.copyfile(str(files[int(fileChoice)]), tempFile)
-            print(f"Creating {str(tempFile)} to contain edits")
+                timestamp = round(time.time())
+                tempFile = tempFile + f"-{str(timestamp)}.nc"
 
-            editor = Editor(tempFile)
+                shutil.copyfile(str(files[int(fileChoice)]), tempFile)
+                print(f"Creating {str(tempFile)} to contain edits")
 
-            while True:
-                try:
-                    print("Edit fields, or press CTRL+C to exit: ")
-                    editor.editInteractive()
-                except KeyboardInterrupt:
-                    print("\nExiting")
-                    editor.dset.close()
-                    sys.exit(0)
+                editor = Editor(tempFile)
 
-    else:
-        print('Not an int, exiting')
-        sys.exit()
+                while True:
+                    try:
+                        #print("Edit fields, or press CTRL+C to exit: ")
+                        userChoice = input("Enter 'F' to finish and save you changes, or anything else to continue editing: ")
+                        if str(userChoice).lower() == 'f':
+                            print(f"\nSaving {str(tempFile)}")
+                            editor.dset.close()
+                            break
+                        else:
+                            editor.editInteractive()
+                    except KeyboardInterrupt:
+                        print("\nExiting")
+                        editor.dset.close()
+                        sys.exit(0)
+
+        else:
+            print('Not an int, exiting')
+            sys.exit()

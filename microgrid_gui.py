@@ -29,7 +29,7 @@ temp_low_inject = IntVar(value=50)
 
 submit_button_text = StringVar(app, default_submit_button_text)
 
-microgridController = MicrogridController("COM13", "COM18")
+microgridController = MicrogridController("COM13", "COM40")
 
 
 

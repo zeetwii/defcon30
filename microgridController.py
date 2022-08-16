@@ -15,8 +15,8 @@ class MicrogridController:
         wind: the wind turbine serial port
         """
 
-        self.solar = serial.Serial(solar, 115200, timeout=0.1)
-        self.wind = serial.Serial(wind, 115200, timeout=0.1)
+        self.solar = serial.Serial(solar, 9600, timeout=0.1)
+        self.wind = serial.Serial(wind, 9600, timeout=0.1)
 
         self.yaw = 0
         self.easterEgg = False
@@ -149,7 +149,7 @@ class MicrogridController:
                 self.payloadInterface("solar", "sol", [0, 0, 0])
                 self.payloadInterface("solar", "cir", [255, 0, 0])
                 self.payloadInterface("solar", "srv", [120, 120, 120, 120])
-            elif solarWarning >= 2 or windAlert >= 1:
+            elif solarWarning >= 2 or solarAlert >= 1:
                 #self.payloadInterface("solar", "wnd", ["255", "0", "0"])
                 self.payloadInterface("solar", "sol", [255, 0, 0])
                 self.payloadInterface("solar", "cir", [255, 0, 0])
